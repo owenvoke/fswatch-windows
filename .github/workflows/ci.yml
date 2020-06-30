@@ -1,0 +1,59 @@
+name: CI
+
+on: [ push ]
+
+env:
+  LATEST_VERSION: '1.14.0'
+
+jobs:
+  ci:
+    runs-on: windows-latest
+
+    name: Build Windows binary
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Install Cygwin
+      run: |
+        choco install -y cygwin cyg-get wget
+        cyg-get gcc-g++ make autoconf automake autopoint libtool gettext
+
+    - name: Download fswatch
+      run: |
+        wget "https://github.com/emcrisostomo/fswatch/releases/download/$Env:LATEST_VERSION/fswatch-$Env:LATEST_VERSION.tar.gz"
+        tar -xzf "fswatch-$Env:LATEST_VERSION.tar.gz"
+        rm "fswatch-$Env:LATEST_VERSION.tar.gz"
+
+    - name: Build fswatch
+      shell: cmd
+      run: |
+        cd "%GITHUB_WORKSPACE%/fswatch-%LATEST_VERSION%"
+        path c:/tools/cygwin/bin
+
+        bash -c './configure'
+
+        bash -c 'make'
+
+    - name: Create GitHub Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ env.LATEST_VERSION }}
+        release_name: fswatch ${{ env.LATEST_VERSION }}
+        draft: false
+        prerelease: false
+
+    - name: Upload binary to GitHub Releases
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./fswatch-${{ env.LATEST_VERSION }}/fswatch/src/fswatch.exe
+        asset_name: fswatch.exe
+        asset_content_type: application/vnd.microsoft.portable-executable
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
