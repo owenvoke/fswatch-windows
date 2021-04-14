@@ -1,9 +1,9 @@
 name: CI
 
-on: [ push ]
-
-env:
-  LATEST_VERSION: '1.14.0'
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
   ci:
@@ -16,6 +16,9 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
 
+    - name: Get tag
+      uses: olegtarasov/get-tag@v2.1
+
     - name: Install Cygwin
       run: |
         choco install -y cygwin cyg-get wget
@@ -23,14 +26,14 @@ jobs:
 
     - name: Download fswatch
       run: |
-        wget "https://github.com/emcrisostomo/fswatch/releases/download/$Env:LATEST_VERSION/fswatch-$Env:LATEST_VERSION.tar.gz"
-        tar -xzf "fswatch-$Env:LATEST_VERSION.tar.gz"
-        rm "fswatch-$Env:LATEST_VERSION.tar.gz"
+        wget "https://github.com/emcrisostomo/fswatch/releases/download/${{ env.GIT_TAG_NAME }}/fswatch-${{ env.GIT_TAG_NAME }}.tar.gz"
+        tar -xzf "fswatch-${{ env.GIT_TAG_NAME }}.tar.gz"
+        rm "fswatch-${{ env.GIT_TAG_NAME }}.tar.gz"
 
     - name: Build fswatch
       shell: cmd
       run: |
-        cd "%GITHUB_WORKSPACE%/fswatch-%LATEST_VERSION%"
+        cd "${{ github.workspace }}/fswatch-${{ env.GIT_TAG_NAME }}"
         path c:/tools/cygwin/bin
 
         bash -c './configure'
@@ -43,8 +46,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ env.LATEST_VERSION }}
-        release_name: fswatch ${{ env.LATEST_VERSION }}
+        tag_name: ${{ env.GIT_TAG_NAME }}
+        release_name: fswatch ${{ env.GIT_TAG_NAME }}
         draft: false
         prerelease: false
 
@@ -52,7 +55,7 @@ jobs:
       uses: actions/upload-release-asset@v1
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./fswatch-${{ env.LATEST_VERSION }}/fswatch/src/fswatch.exe
+        asset_path: ./fswatch-${{ env.GIT_TAG_NAME }}/fswatch/src/fswatch.exe
         asset_name: fswatch.exe
         asset_content_type: application/vnd.microsoft.portable-executable
       env:
